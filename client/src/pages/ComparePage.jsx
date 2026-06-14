@@ -40,25 +40,30 @@ export default function ComparePage() {
   const [projectBId, setProjectBId] = useState("");
 
   const load = useCallback(async () => {
+    // Guard: never fire if Clerk hasn't confirmed auth yet
+    if (!isLoaded || !isSignedIn) return;
     setLoading(true);
     setError("");
     try {
       const data = await getProjects(getToken);
       setProjects(data.projects || []);
     } catch (err) {
+      // Suppress auth-init errors — Clerk was still warming up, not a real failure
+      if (err.isAuthInitError) return;
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     load();
   }, [isLoaded, isSignedIn, load]);
 
-  if (loading || !isLoaded) return <Spinner label="Loading projects" />;
+  if (!isLoaded || loading) return <Spinner label="Loading projects" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
+
 
   const projectA = projects.find(p => p._id === projectAId);
   const projectB = projects.find(p => p._id === projectBId);

@@ -1,16 +1,17 @@
 import { useAuth } from "@clerk/clerk-react";
-import { Plus, Search, Trash2, Wand2, X } from "lucide-react";
+import { Plus, Search, Trash2, Wand2, X, Cpu } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import ProjectDetails from "../components/projects/ProjectDetails.jsx";
 import Button from "../components/ui/Button.jsx";
 import Card from "../components/ui/Card.jsx";
 import { DIFFICULTIES, DOMAINS } from "../config/constants.js";
-import { analyzeProject, createProject, deleteProject } from "../services/api.js";
+import { analyzeProject, createProject, deleteProject, reverseEngineerProject } from "../services/api.js";
 import React from 'react'
 
 const MODE_GENERATE = "generate";
 const MODE_ANALYZE = "analyze";
+const MODE_REVERSE = "reverse";
 
 export default function GeneratorPage() {
   const { getToken } = useAuth();
@@ -24,6 +25,10 @@ export default function GeneratorPage() {
 
   // Analyze mode state
   const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+
+  // Reverse engineer mode state
+  const [productName, setProductName] = useState("");
 
   // Shared state
   const [generatedProject, setGeneratedProject] = useState(null);
@@ -77,9 +82,29 @@ export default function GeneratorPage() {
     setGenerating(true);
     setErrors({});
     try {
-      const data = await analyzeProject(projectName.trim(), getToken);
+      const data = await analyzeProject(projectName.trim(), projectDescription.trim(), getToken);
       setGeneratedProject(data.project);
       toast.success("Project analyzed and saved");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleReverseEngineer(event) {
+    event.preventDefault();
+    if (!productName.trim() || productName.trim().length < 2) {
+      setErrors({ productName: "Enter a product name (min 2 characters)." });
+      return;
+    }
+
+    setGenerating(true);
+    setErrors({});
+    try {
+      const data = await reverseEngineerProject(productName.trim(), getToken);
+      setGeneratedProject(data.project);
+      toast.success("Product reverse engineered and saved");
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -133,6 +158,17 @@ export default function GeneratorPage() {
           >
             <Search className="h-4 w-4" />
             Analyze Existing Project
+          </button>
+          <button
+            onClick={() => { setMode(MODE_REVERSE); setErrors({}); }}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
+              mode === MODE_REVERSE
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            <Cpu className="h-4 w-4" />
+            Reverse Engineer Product
           </button>
         </div>
 
@@ -228,6 +264,23 @@ export default function GeneratorPage() {
                 {errors.projectName ? <p className="mt-2 text-sm text-red-600">{errors.projectName}</p> : null}
               </div>
 
+              <div>
+                <label htmlFor="projectDescription" className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Project Description <span className="font-normal text-slate-500 dark:text-slate-400">(Optional but Recommended)</span>
+                </label>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  A brief description helps Gemini produce a more accurate and detailed blueprint.
+                </p>
+                <textarea
+                  id="projectDescription"
+                  value={projectDescription}
+                  onChange={(event) => setProjectDescription(event.target.value)}
+                  rows={3}
+                  placeholder="AI-powered platform that analyzes resumes, calculates ATS score, compares resumes against job descriptions, and suggests improvements."
+                  className="focus-ring mt-2 w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
+              </div>
+
               <Button type="submit" loading={generating} className="w-full">
                 <Search className="h-4 w-4" />
                 Analyze Project
@@ -251,13 +304,58 @@ export default function GeneratorPage() {
             </div>
           </Card>
         )}
+
+        {/* Reverse Engineer Mode */}
+        {mode === MODE_REVERSE && (
+          <Card className="mt-5 p-5">
+            <form onSubmit={handleReverseEngineer} className="space-y-5">
+              <div>
+                <label htmlFor="productName" className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  Product Name
+                </label>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Enter a well-known product. Gemini will reverse engineer its architecture, tech stack, database design, APIs, and system design.
+                </p>
+                <input
+                  id="productName"
+                  value={productName}
+                  onChange={(event) => { setProductName(event.target.value); setErrors({}); }}
+                  placeholder="Netflix, Swiggy, Amazon, Instagram, ChatGPT"
+                  className="focus-ring mt-2 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                />
+                {errors.productName ? <p className="mt-2 text-sm text-red-600">{errors.productName}</p> : null}
+              </div>
+
+              <Button type="submit" loading={generating} className="w-full">
+                <Cpu className="h-4 w-4" />
+                Reverse Engineer
+              </Button>
+            </form>
+
+            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Popular products to reverse engineer:</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {["Netflix", "Swiggy", "Amazon", "Instagram", "ChatGPT", "Spotify", "Uber", "Airbnb"].map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => { setProductName(example); setErrors({}); }}
+                    className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
       </section>
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-              {mode === MODE_ANALYZE ? "Analyzed Project" : "Generated Project"}
+              {mode === MODE_ANALYZE ? "Analyzed Project" : mode === MODE_REVERSE ? "Reverse Engineered Product" : "Generated Project"}
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400">The result is saved to your history automatically.</p>
           </div>
@@ -276,11 +374,15 @@ export default function GeneratorPage() {
               <h3 className="font-semibold text-slate-900 dark:text-white">
                 {mode === MODE_ANALYZE
                   ? "Your analyzed project will appear here"
+                  : mode === MODE_REVERSE
+                  ? "Your reverse engineered product will appear here"
                   : "Your generated project will appear here"}
               </h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
                 {mode === MODE_ANALYZE
                   ? "Enter a project name above and Gemini will produce a full blueprint with features, tech stack, architecture, and more."
+                  : mode === MODE_REVERSE
+                  ? "Enter a well-known product above and Gemini will reverse engineer its architecture, tech stack, scaling strategy, and system design."
                   : "Use the form to create a project idea with features, tech stack, and an estimated build timeline."}
               </p>
             </div>

@@ -12,6 +12,8 @@ import React from "react";
 const categoryIcons = {
   "HR Questions": BookOpen,
   "Technical Questions": Code2,
+  "Follow-up Questions": Database,
+  "Project Defense Questions": Layers,
   "Database Questions": Database,
   "System Design Questions": Layers,
   "Architecture Questions": Building2,
@@ -20,6 +22,8 @@ const categoryIcons = {
 const categoryColors = {
   "HR Questions": "bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
   "Technical Questions": "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+  "Follow-up Questions": "bg-amber-50 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  "Project Defense Questions": "bg-rose-50 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
   "Database Questions": "bg-amber-50 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   "System Design Questions": "bg-purple-50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   "Architecture Questions": "bg-rose-50 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
@@ -50,7 +54,7 @@ export default function InterviewQuestionsPanel({ projectId, interviewQuestions,
         <BookOpen className="mb-3 h-8 w-8 text-slate-400" />
         <h3 className="font-semibold text-slate-900 dark:text-white">No Interview Questions Yet</h3>
         <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
-          Generate AI-powered interview questions covering HR, Technical, Database, System Design, and Architecture topics.
+          Generate AI-powered interview questions WITH answers covering HR, Technical, Follow-up, and Project Defense topics.
         </p>
         <Button className="mt-4" onClick={handleGenerate}>
           <BookOpen className="h-4 w-4" />

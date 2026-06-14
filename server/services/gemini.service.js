@@ -366,7 +366,7 @@ Return this exact structure:
 
 // ─── Analyze Existing Project with Gemini ──────────────────────────────────
 
-export async function analyzeProjectWithGemini({ projectName }) {
+export async function analyzeProjectWithGemini({ projectName, projectDescription }) {
   const model = genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
@@ -376,22 +376,37 @@ export async function analyzeProjectWithGemini({ projectName }) {
     }
   });
 
+  const descriptionLine = projectDescription && projectDescription.trim()
+    ? projectDescription.trim()
+    : "Not provided";
+
+  const hasDescription = projectDescription && projectDescription.trim().length > 0;
+
   const prompt = `
 You are a senior software architect and project advisor.
 
 The user has an EXISTING project concept they want analyzed.
-Your job is to produce a COMPLETE professional software blueprint for this project.
+Your job is to produce a COMPLETE professional software blueprint for THIS EXACT project.
 
-Project Name: ${projectName}
+Project Name: ${projectName}${hasDescription ? `
+Project Description: ${descriptionLine}` : ""}
 
 CRITICAL RULES:
-- Treat this as an already-existing project idea, not something you are inventing.
-- Choose the most appropriate technology stack for THIS specific project.
-- Do NOT default to any particular stack. Pick whatever best fits the project's domain and requirements.
-- Architecture, database schema, folder structure, and API endpoints MUST be appropriate for the chosen stack.
-- For example, a "Hostel Management System" might use Java/Spring Boot + MySQL, or Python/Django + PostgreSQL.
-- A "Real-time Chat App" might use Node.js/Socket.io + MongoDB, or Go + Redis + PostgreSQL.
-- An "AI Resume Analyzer" might use Python/FastAPI + React + PostgreSQL.
+- Analyze THIS EXACT PROJECT. Do NOT substitute it with a generic software application.
+- Base ALL outputs strictly on the provided project name${hasDescription ? " and description" : ""}.
+- Do NOT assume unrelated features. Do NOT replace the project with a generic CRUD application.
+${hasDescription ? `- The description is the PRIMARY source of truth. If the description conflicts with assumptions from the title, TRUST THE DESCRIPTION.
+- Every feature, API endpoint, database table, roadmap step, and tech stack item MUST be directly relevant to: "${descriptionLine}"` : ""}
+- Choose the most appropriate technology stack for THIS specific project's domain and requirements.
+- Architecture, database schema, folder structure, and API endpoints MUST reflect the project's actual purpose.
+- For example, an "ATS Resume Maker" must include NLP, resume parsing, ATS scoring, job description matching — NOT generic CRUD.
+- A "Hostel Management System" uses room booking, occupancy tracking, fee management — NOT generic user management.
+- A "Real-time Chat App" uses WebSockets, message queues, presence detection — NOT generic REST CRUD.
+
+QUALITY CHECK:
+- Before finalizing, verify: does every section specifically describe "${projectName}" and not a generic application?
+- If any section is generic or unrelated to the project, rewrite it to be project-specific.
+- Resume bullets, features, roadmap, APIs — ALL must reference the project's actual domain and technical requirements.
 
 Return ONLY valid JSON.
 Do NOT use markdown.
@@ -671,6 +686,305 @@ Return this exact structure:
         .filter(e => e && typeof e.source === "string" && typeof e.target === "string")
         .slice(0, 15)
     : defaultDiagram.architectureEdges;
+
+  return parsed;
+}
+
+// ─── Reverse Engineer Real-World Product with Gemini ──────────────────────────
+// This function generates ONLY system-design content (no resume/career fields).
+
+export async function reverseEngineerWithGemini({ productName }) {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.7,
+      maxOutputTokens: 8192
+    }
+  });
+
+  const prompt = `
+You are a world-class software architect and system design expert.
+
+Reverse engineer the following real-world product from a SYSTEM DESIGN perspective.
+This is NOT a student project. Do NOT generate resume content, career advice, or learning roadmaps.
+Focus exclusively on professional system architecture, infrastructure, and engineering practices.
+
+Product: ${productName}
+
+CRITICAL RULES:
+- Analyze the REAL product "${productName}" as it actually exists in production.
+- Focus on how the product is architecturally built at scale.
+- Do NOT generate resume bullets, ATS content, recruiter analysis, or alternative project ideas.
+- Do NOT generate learning roadmaps or interview questions.
+- All content must be from a senior engineer / system design perspective.
+- Tech stack must reflect what is actually used (or widely understood to be used) by the real product.
+- Scaling strategy must address how the product handles millions of users.
+- Infrastructure must describe cloud providers, CDN, load balancers, and deployment strategy.
+- API Design must be realistic for the actual product.
+- Database design must reflect the real product's data model requirements.
+- Security must cover authentication, authorization, encryption, and compliance relevant to the product.
+- Data flow must describe the end-to-end journey of a request through the system.
+
+Return ONLY valid JSON.
+Do NOT use markdown.
+Do NOT wrap in \`\`\`.
+Do NOT add explanations outside the JSON.
+Every field must contain meaningful, product-specific data.
+
+Return this EXACT structure:
+
+{
+  "title": "${productName}",
+  "description": "Brief overview of what ${productName} is and its core purpose at scale",
+  "features": ["Core product feature 1", "Core product feature 2", "..."],
+  "techStack": ["Actual or widely-known tech used by ${productName}", "..."],
+  "estimatedTime": "N/A - Production System",
+  "architecture": "High-level architecture description of ${productName} (microservices, monolith, event-driven, etc.)",
+  "complexityScore": 95,
+  "architectureExplanationText": "Detailed explanation of the system architecture, including how the components interact and why these design choices were made for ${productName} at scale",
+  "systemDesignExplanation": "In-depth system design explanation: data flow, consistency models, CAP theorem tradeoffs, and distributed systems decisions specific to ${productName}",
+  "databaseSchema": [
+    {
+      "collection": "Core entity name",
+      "fields": [
+        {
+          "name": "field name",
+          "type": "field type",
+          "description": "purpose of this field in ${productName}"
+        }
+      ]
+    }
+  ],
+  "apiEndpoints": [
+    {
+      "method": "HTTP method",
+      "endpoint": "/api/path",
+      "description": "What this endpoint does in ${productName}"
+    }
+  ],
+  "folderStructure": ["service/or/repo/path", "..."],
+  "scalingStrategy": ["Scaling approach 1 used by ${productName}", "Scaling approach 2", "..."],
+  "securityConsiderations": ["Security measure 1", "Security measure 2", "..."],
+  "infrastructure": ["Infrastructure component 1", "Infrastructure component 2", "..."],
+  "industryPractices": ["Engineering practice 1", "Engineering practice 2", "..."],
+  "deploymentStrategy": "Description of how ${productName} deploys code to production (CI/CD, blue-green, canary, etc.)",
+  "dataFlow": "Step-by-step description of how a typical request flows through the ${productName} system from client to response",
+  "techAdvisor": {
+    "recommendedFrontend": ["Frontend technologies used by ${productName}"],
+    "recommendedBackend": ["Backend technologies used by ${productName}"],
+    "recommendedDatabase": ["Databases used by ${productName}"],
+    "deploymentSuggestions": ["Deployment infrastructure used by ${productName}"]
+  },
+  "architectureNodes": [
+    { "id": "client", "label": "Client Layer\\n(Web / Mobile)" },
+    { "id": "cdn", "label": "CDN\\n(CloudFront / Fastly)" },
+    { "id": "loadbalancer", "label": "Load Balancer\\n(AWS ALB / Nginx)" },
+    { "id": "api", "label": "API Gateway\\n(Kong / AWS API GW)" },
+    { "id": "services", "label": "Microservices\\n(Domain Services)" },
+    { "id": "database", "label": "Database Layer\\n(Primary DB)" },
+    { "id": "cache", "label": "Cache Layer\\n(Redis / Memcached)" },
+    { "id": "queue", "label": "Message Queue\\n(Kafka / RabbitMQ)" }
+  ],
+  "architectureEdges": [
+    { "source": "client", "target": "cdn" },
+    { "source": "cdn", "target": "loadbalancer" },
+    { "source": "loadbalancer", "target": "api" },
+    { "source": "api", "target": "services" },
+    { "source": "services", "target": "database" },
+    { "source": "services", "target": "cache" },
+    { "source": "services", "target": "queue" }
+  ]
+}
+`;
+
+  let result;
+  const maxAttempts = 5;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`Reverse Engineer Gemini Attempt ${attempt}/${maxAttempts}`);
+      result = await model.generateContent(prompt);
+      if (!result || !result.response) {
+        throw new Error("Empty response from Gemini");
+      }
+      break;
+    } catch (error) {
+      console.error(`Reverse Engineer Gemini Attempt ${attempt} Failed:`, error.message);
+      if (attempt === maxAttempts) {
+        throw new Error(`Gemini failed after ${maxAttempts} attempts: ${error.message}`);
+      }
+      const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  let text;
+  try {
+    text = result.response.text();
+  } catch (err) {
+    throw new Error(`Failed to extract text: ${err.message}`);
+  }
+
+  if (!text || typeof text !== "string") {
+    throw new Error("Gemini returned empty response");
+  }
+
+  const cleaned = text
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .replace(/^\s*json\s*/i, "")
+    .trim();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("Gemini returned invalid JSON");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Gemini returned non-object JSON");
+  }
+
+  // ─── Validate and sanitize fields ────────────────────────────────────────────
+
+  parsed.title = parsed.title && typeof parsed.title === "string" && parsed.title.trim()
+    ? parsed.title.trim()
+    : productName;
+
+  parsed.description = parsed.description && typeof parsed.description === "string" && parsed.description.trim()
+    ? parsed.description.trim()
+    : `${productName} - Production-scale system architecture analysis.`;
+
+  parsed.estimatedTime = "N/A - Production System";
+
+  parsed.features = Array.isArray(parsed.features) && parsed.features.length >= 4
+    ? parsed.features.filter(f => typeof f === "string" && f.trim()).slice(0, 15)
+    : [`Core ${productName} features`, "High availability", "Horizontal scaling", "Real-time data processing"];
+
+  parsed.techStack = Array.isArray(parsed.techStack) && parsed.techStack.length >= 4
+    ? parsed.techStack.filter(t => typeof t === "string" && t.trim()).slice(0, 20)
+    : ["Microservices", "Docker", "Kubernetes", "PostgreSQL", "Redis", "Kafka"];
+
+  parsed.architecture = parsed.architecture && typeof parsed.architecture === "string" && parsed.architecture.trim()
+    ? parsed.architecture.trim()
+    : `${productName} uses a distributed microservices architecture designed for massive scale.`;
+
+  parsed.complexityScore = typeof parsed.complexityScore === "number" && parsed.complexityScore >= 0 && parsed.complexityScore <= 100
+    ? Math.round(parsed.complexityScore)
+    : 95;
+
+  parsed.databaseSchema = Array.isArray(parsed.databaseSchema) && parsed.databaseSchema.length >= 2
+    ? parsed.databaseSchema.map(schema => ({
+        collection: schema.collection && typeof schema.collection === "string" ? schema.collection : "Entity",
+        fields: Array.isArray(schema.fields)
+          ? schema.fields.map(field => ({
+              name: field.name && typeof field.name === "string" ? field.name : "field",
+              type: field.type && typeof field.type === "string" ? field.type : "String",
+              description: field.description && typeof field.description === "string" ? field.description : "Field description"
+            }))
+          : [{ name: "id", type: "UUID", description: "Unique identifier" }]
+      }))
+    : [];
+
+  parsed.apiEndpoints = Array.isArray(parsed.apiEndpoints) && parsed.apiEndpoints.length >= 4
+    ? parsed.apiEndpoints.map(ep => ({
+        method: ep.method && typeof ep.method === "string" ? ep.method.toUpperCase() : "GET",
+        endpoint: ep.endpoint && typeof ep.endpoint === "string" ? ep.endpoint : "/api/resource",
+        description: ep.description && typeof ep.description === "string" ? ep.description : "API endpoint"
+      }))
+    : [];
+
+  parsed.folderStructure = Array.isArray(parsed.folderStructure) && parsed.folderStructure.length >= 5
+    ? parsed.folderStructure.filter(f => typeof f === "string" && f.trim()).slice(0, 30)
+    : [];
+
+  // System-design-specific fields
+  parsed.scalingStrategy = Array.isArray(parsed.scalingStrategy) && parsed.scalingStrategy.length >= 3
+    ? parsed.scalingStrategy.filter(s => typeof s === "string" && s.trim()).slice(0, 12)
+    : [`Horizontal scaling of ${productName} services`, "Database read replicas", "CDN for static assets", "Caching layer with Redis"];
+
+  parsed.securityConsiderations = Array.isArray(parsed.securityConsiderations) && parsed.securityConsiderations.length >= 3
+    ? parsed.securityConsiderations.filter(s => typeof s === "string" && s.trim()).slice(0, 12)
+    : ["OAuth 2.0 / JWT authentication", "TLS encryption in transit", "Data encryption at rest", "Rate limiting and DDoS protection"];
+
+  parsed.infrastructure = Array.isArray(parsed.infrastructure) && parsed.infrastructure.length >= 3
+    ? parsed.infrastructure.filter(s => typeof s === "string" && s.trim()).slice(0, 12)
+    : ["AWS / GCP / Azure cloud infrastructure", "Kubernetes orchestration", "Docker containerization", "CI/CD pipeline"];
+
+  parsed.industryPractices = Array.isArray(parsed.industryPractices) && parsed.industryPractices.length >= 3
+    ? parsed.industryPractices.filter(s => typeof s === "string" && s.trim()).slice(0, 12)
+    : ["Site reliability engineering (SRE)", "Continuous integration / delivery", "Chaos engineering", "Observability and monitoring"];
+
+  parsed.deploymentStrategy = parsed.deploymentStrategy && typeof parsed.deploymentStrategy === "string" && parsed.deploymentStrategy.trim()
+    ? parsed.deploymentStrategy.trim()
+    : `${productName} uses blue-green deployments with automated canary releases and rollback capabilities.`;
+
+  parsed.dataFlow = parsed.dataFlow && typeof parsed.dataFlow === "string" && parsed.dataFlow.trim()
+    ? parsed.dataFlow.trim()
+    : `Client → CDN → Load Balancer → API Gateway → ${productName} Services → Database / Cache`;
+
+  // Explicitly clear resume/career fields so they are never stored for reverse-engineered products
+  parsed.resumePoints = [];
+  parsed.resumeBullets = [];
+  parsed.alternatives = [];
+  parsed.roadmap = [];
+
+  const techAdvisor = parsed.techAdvisor && typeof parsed.techAdvisor === "object" ? parsed.techAdvisor : {};
+  parsed.techAdvisor = {
+    recommendedFrontend: Array.isArray(techAdvisor.recommendedFrontend) && techAdvisor.recommendedFrontend.length > 0
+      ? techAdvisor.recommendedFrontend.filter(t => typeof t === "string").slice(0, 8)
+      : [],
+    recommendedBackend: Array.isArray(techAdvisor.recommendedBackend) && techAdvisor.recommendedBackend.length > 0
+      ? techAdvisor.recommendedBackend.filter(t => typeof t === "string").slice(0, 8)
+      : [],
+    recommendedDatabase: Array.isArray(techAdvisor.recommendedDatabase) && techAdvisor.recommendedDatabase.length > 0
+      ? techAdvisor.recommendedDatabase.filter(t => typeof t === "string").slice(0, 8)
+      : [],
+    deploymentSuggestions: Array.isArray(techAdvisor.deploymentSuggestions) && techAdvisor.deploymentSuggestions.length > 0
+      ? techAdvisor.deploymentSuggestions.filter(t => typeof t === "string").slice(0, 8)
+      : []
+  };
+
+  // Architecture diagram
+  const defaultNodes = [
+    { id: "client", label: "Client Layer\n(Web / Mobile)" },
+    { id: "cdn", label: "CDN\n(CloudFront / Fastly)" },
+    { id: "loadbalancer", label: "Load Balancer" },
+    { id: "api", label: "API Gateway" },
+    { id: "services", label: `${productName}\nServices` },
+    { id: "database", label: "Database Layer" },
+    { id: "cache", label: "Cache\n(Redis)" },
+    { id: "queue", label: "Message Queue\n(Kafka)" }
+  ];
+  const defaultEdges = [
+    { source: "client", target: "cdn" },
+    { source: "cdn", target: "loadbalancer" },
+    { source: "loadbalancer", target: "api" },
+    { source: "api", target: "services" },
+    { source: "services", target: "database" },
+    { source: "services", target: "cache" },
+    { source: "services", target: "queue" }
+  ];
+
+  parsed.architectureNodes = Array.isArray(parsed.architectureNodes) && parsed.architectureNodes.length >= 3
+    ? parsed.architectureNodes
+        .filter(n => n && typeof n.id === "string" && typeof n.label === "string")
+        .slice(0, 12)
+    : defaultNodes;
+
+  parsed.architectureEdges = Array.isArray(parsed.architectureEdges) && parsed.architectureEdges.length >= 2
+    ? parsed.architectureEdges
+        .filter(e => e && typeof e.source === "string" && typeof e.target === "string")
+        .slice(0, 20)
+    : defaultEdges;
+
+  console.log("\n=== REVERSE ENGINEERED PRODUCT (system-design only) ===");
+  console.log("Product:", parsed.title);
+  console.log("Tech Stack:", parsed.techStack?.slice(0, 5).join(", "));
+  console.log("Scaling Strategies:", parsed.scalingStrategy?.length);
+  console.log("=== END REVERSE ENGINEER ===\n");
 
   return parsed;
 }

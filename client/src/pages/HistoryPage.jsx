@@ -20,21 +20,26 @@ export default function HistoryPage() {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [sourceType, setSourceType] = useState("");
   const [sort, setSort] = useState("newest");
   const [deletingId, setDeletingId] = useState("");
 
   const loadProjects = useCallback(async () => {
+    // Guard: never fire if Clerk hasn't confirmed auth yet
+    if (!isLoaded || !isSignedIn) return;
     setLoading(true);
     setError("");
     try {
       const data = await getProjects(getToken);
       setProjects(data.projects || []);
     } catch (err) {
+      // Suppress auth-init errors — Clerk was still warming up, not a real failure
+      if (err.isAuthInitError) return;
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
@@ -51,7 +56,8 @@ export default function HistoryPage() {
         project.skills.some((skill) => skill.toLowerCase().includes(search));
       const matchesDomain = !domain || project.domain === domain;
       const matchesDifficulty = !difficulty || project.difficulty === difficulty;
-      return matchesSearch && matchesDomain && matchesDifficulty;
+      const matchesSourceType = !sourceType || project.sourceType === sourceType;
+      return matchesSearch && matchesDomain && matchesDifficulty && matchesSourceType;
     });
 
     switch (sort) {
@@ -71,7 +77,7 @@ export default function HistoryPage() {
     }
 
     return result;
-  }, [projects, query, domain, difficulty, sort]);
+  }, [projects, query, domain, difficulty, sourceType, sort]);
 
   async function handleDelete(id) {
     setDeletingId(id);
@@ -86,7 +92,7 @@ export default function HistoryPage() {
     }
   }
 
-  if (loading || !isLoaded) return (
+  if (!isLoaded || loading) return (
     <div className="space-y-6">
       <div>
         <div className="h-8 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
@@ -99,6 +105,7 @@ export default function HistoryPage() {
   );
   if (error) return <ErrorState message={error} onRetry={loadProjects} />;
 
+
   return (
     <div className="space-y-6">
       <div>
@@ -106,7 +113,7 @@ export default function HistoryPage() {
         <p className="mt-1 text-slate-600 dark:text-slate-400">Search, filter, sort, view, and delete generated project ideas.</p>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[1fr_200px_200px_180px]">
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900 lg:grid-cols-[1fr_200px_200px_180px_180px]">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -127,6 +134,12 @@ export default function HistoryPage() {
           {DIFFICULTIES.map((item) => (
             <option key={item}>{item}</option>
           ))}
+        </select>
+        <select value={sourceType} onChange={(event) => setSourceType(event.target.value)} className="focus-ring min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+          <option value="">All Types</option>
+          <option value="generated">Generated</option>
+          <option value="analyzed">Analyzed</option>
+          <option value="reverse_engineered">Reverse Engineered</option>
         </select>
         <select value={sort} onChange={(event) => setSort(event.target.value)} className="focus-ring min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
           <option value="newest">Newest First</option>
@@ -149,6 +162,7 @@ export default function HistoryPage() {
                 setQuery("");
                 setDomain("");
                 setDifficulty("");
+                setSourceType("");
                 setSort("newest");
               }}
             >

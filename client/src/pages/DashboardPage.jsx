@@ -19,17 +19,21 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   const loadProjects = useCallback(async () => {
+    // Guard: never fire if Clerk hasn't confirmed auth yet
+    if (!isLoaded || !isSignedIn) return;
     setLoading(true);
     setError("");
     try {
       const data = await getProjects(getToken);
       setProjects(data.projects || []);
     } catch (err) {
+      // Suppress auth-init errors — Clerk was still warming up, not a real failure
+      if (err.isAuthInitError) return;
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
@@ -45,8 +49,9 @@ export default function DashboardPage() {
     ];
   }, [projects]);
 
-  if (loading || !isLoaded) return <Spinner label="Loading dashboard" />;
+  if (!isLoaded || loading) return <Spinner label="Loading dashboard" />;
   if (error) return <ErrorState message={error} onRetry={loadProjects} />;
+
 
   return (
     <div className="space-y-6">

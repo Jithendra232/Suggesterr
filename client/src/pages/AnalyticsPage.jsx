@@ -42,26 +42,31 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
+    // Guard: never fire if Clerk hasn't confirmed auth yet
+    if (!isLoaded || !isSignedIn) return;
     setLoading(true);
     setError("");
     try {
       const data = await getAnalytics(getToken);
       setAnalytics(data.analytics);
     } catch (err) {
+      // Suppress auth-init errors — Clerk was still warming up, not a real failure
+      if (err.isAuthInitError) return;
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, isLoaded, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
     load();
   }, [isLoaded, isSignedIn, load]);
 
-  if (loading || !isLoaded) return <Spinner label="Loading analytics" />;
+  if (!isLoaded || loading) return <Spinner label="Loading analytics" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!analytics) return null;
+
 
   return (
     <div className="space-y-6">

@@ -183,12 +183,69 @@ const architectureEdgeSchema = new mongoose.Schema({
   target: { type: String, required: true }
 }, { _id: false });
 
+// ─── Feature: Project Description ────────────────────────────────────────────
+const projectDescriptionSchema = new mongoose.Schema({
+  professional: { type: String, default: "" },
+  beginner: { type: String, default: "" },
+  recruiter: { type: String, default: "" }
+}, { _id: false });
+
+// ─── Feature: Common Mistakes ─────────────────────────────────────────────────
+const commonMistakesSchema = new mongoose.Schema({
+  design: { type: [String], default: [] },
+  database: { type: [String], default: [] },
+  authentication: { type: [String], default: [] },
+  deployment: { type: [String], default: [] },
+  resume: { type: [String], default: [] }
+}, { _id: false });
+
+// ─── Feature: Scalability Suggestions ─────────────────────────────────────────
+const scalabilitySuggestionsSchema = new mongoose.Schema({
+  currentLimitations: { type: [String], default: [] },
+  scalingChallenges: { type: [String], default: [] },
+  futureImprovements: { type: [String], default: [] },
+  largeUserStrategies: { type: [String], default: [] }
+}, { _id: false });
+
+// ─── Feature: Industry-Level Improvements ─────────────────────────────────────
+const industryImprovementsSchema = new mongoose.Schema({
+  enterpriseFeatures: { type: [String], default: [] },
+  securityImprovements: { type: [String], default: [] },
+  monitoringLogging: { type: [String], default: [] },
+  cicdRecommendations: { type: [String], default: [] },
+  productionEnhancements: { type: [String], default: [] }
+}, { _id: false });
+
+// ─── Feature: Resume Project Description ──────────────────────────────────────
+const resumeDescriptionSchema = new mongoose.Schema({
+  fiftyWords: { type: String, default: "" },
+  hundredWords: { type: String, default: "" },
+  atsFriendly: { type: String, default: "" },
+  oneLine: { type: String, default: "" }
+}, { _id: false });
+
+// ─── Feature: Architecture Explanation ────────────────────────────────────────
+const architectureExplanationSchema = new mongoose.Schema({
+  frontend: { type: String, default: "" },
+  backend: { type: String, default: "" },
+  database: { type: String, default: "" },
+  authentication: { type: String, default: "" },
+  dataFlow: { type: String, default: "" }
+}, { _id: false });
+
 // ─── Generation Status Schema ────────────────────────────────────────────────
 const generationStatusSchema = new mongoose.Schema({
   documentation: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
   githubPlanner: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
   learningRoadmap: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
-  recruiterAnalysis: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" }
+  recruiterAnalysis: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  projectDescription: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  commonMistakes: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  scalabilitySuggestions: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  industryImprovements: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  readme: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  resumeDescription: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" },
+  architectureExplanation: { type: String, enum: ["not_generated", "generating", "generated"], default: "not_generated" }
 }, { _id: false });
 
 const projectSchema = new mongoose.Schema(
@@ -250,7 +307,7 @@ const projectSchema = new mongoose.Schema(
     },
     sourceType: {
       type: String,
-      enum: ["generated", "analyzed"],
+      enum: ["generated", "analyzed", "reverse_engineered"],
       default: "generated",
     },
     databaseSchema: {
@@ -350,6 +407,53 @@ const projectSchema = new mongoose.Schema(
       type: [architectureEdgeSchema],
       default: [],
     },
+    // ─── Feature: Project Description ────────────────────────────────────────
+    projectDescription: {
+      type: projectDescriptionSchema,
+      default: null,
+    },
+    // ─── Feature: Common Mistakes ─────────────────────────────────────────────
+    commonMistakes: {
+      type: commonMistakesSchema,
+      default: null,
+    },
+    // ─── Feature: Scalability Suggestions ─────────────────────────────────────
+    scalabilitySuggestions: {
+      type: scalabilitySuggestionsSchema,
+      default: null,
+    },
+    // ─── Feature: Industry-Level Improvements ─────────────────────────────────
+    industryImprovements: {
+      type: industryImprovementsSchema,
+      default: null,
+    },
+    // ─── Feature: README ──────────────────────────────────────────────────────
+    readme: {
+      type: String,
+      default: "",
+    },
+    // ─── Feature: Resume Project Description ─────────────────────────────────
+    resumeDescription: {
+      type: resumeDescriptionSchema,
+      default: null,
+    },
+    // ─── Feature: Architecture Explanation ────────────────────────────────────
+    architectureExplanation: {
+      type: architectureExplanationSchema,
+      default: null,
+    },
+    // ─── Feature: Progress Tracking ───────────────────────────────────────────
+    progressStatus: {
+      type: String,
+      enum: ["not_started", "in_progress", "completed"],
+      default: "not_started",
+    },
+    progressPercent: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
     // ─── Lazy Generation Status ─────────────────────────────────────────────
     generationStatus: {
       type: generationStatusSchema,
@@ -357,7 +461,14 @@ const projectSchema = new mongoose.Schema(
         documentation: "not_generated",
         githubPlanner: "not_generated",
         learningRoadmap: "not_generated",
-        recruiterAnalysis: "not_generated"
+        recruiterAnalysis: "not_generated",
+        projectDescription: "not_generated",
+        commonMistakes: "not_generated",
+        scalabilitySuggestions: "not_generated",
+        industryImprovements: "not_generated",
+        readme: "not_generated",
+        resumeDescription: "not_generated",
+        architectureExplanation: "not_generated"
       })
     },
   },

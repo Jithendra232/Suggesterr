@@ -11,13 +11,21 @@ import {
   buildArchitectureDiagram
 } from "../services/projectGenerator.service.js";
 
-import { generateProjectWithGemini, analyzeProjectWithGemini } from "../services/gemini.service.js";
+import { generateProjectWithGemini, analyzeProjectWithGemini, reverseEngineerWithGemini } from "../services/gemini.service.js";
 import {
   generateInterviewQuestions,
   generateDocumentation,
   generateGitHubPlanner,
   generateLearningRoadmap,
-  generateRecruiterAnalysis
+  generateRecruiterAnalysis,
+  generateProjectDescriptionAI,
+  generateCommonMistakesAI,
+  generateScalabilitySuggestionsAI,
+  generateIndustryImprovementsAI,
+  generateReadmeAI,
+  generateResumeDescriptionAI,
+  generateArchitectureExplanationAI,
+  chatWithProject
 } from "../services/aiFeatures.service.js";
 
 function validateProjectInput({ skills, domain, difficulty }) {
@@ -106,24 +114,28 @@ export async function createProject(req, res, next) {
 
 export async function analyzeProject(req, res, next) {
   try {
-    const { projectName } = req.body;
+    const { projectName, projectDescription } = req.body;
 
     if (!projectName || typeof projectName !== "string" || projectName.trim().length < 2) {
       return res.status(400).json({ success: false, message: "Project name is required (min 2 characters)" });
     }
 
     const trimmedName = projectName.trim();
+    const trimmedDescription = (projectDescription && typeof projectDescription === "string")
+      ? projectDescription.trim()
+      : "";
 
     console.log("\n=== ANALYZING EXISTING PROJECT ===");
     console.log("User:", req.user.clerkId);
     console.log("Project Name:", trimmedName);
+    console.log("Project Description:", trimmedDescription || "Not provided");
 
     let generated;
     let source;
 
     try {
       console.log("\nAttempting Gemini analysis...");
-      generated = await analyzeProjectWithGemini({ projectName: trimmedName });
+      generated = await analyzeProjectWithGemini({ projectName: trimmedName, projectDescription: trimmedDescription });
       source = "gemini";
       console.log("✓ Successfully analyzed using Gemini");
     } catch (err) {
@@ -560,6 +572,219 @@ export async function getOrGenerateRecruiterAnalysis(req, res, next) {
     res.json({ success: true, ...data });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+// ─── New Lazy Generation GET Endpoints ────────────────────────────────────────
+
+export async function getOrGenerateProjectDescription(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "projectDescription", "projectDescription",
+      generateProjectDescriptionAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateCommonMistakes(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "commonMistakes", "commonMistakes",
+      generateCommonMistakesAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateScalabilitySuggestions(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "scalabilitySuggestions", "scalabilitySuggestions",
+      generateScalabilitySuggestionsAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateIndustryImprovements(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "industryImprovements", "industryImprovements",
+      generateIndustryImprovementsAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateReadme(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "readme", "readme",
+      generateReadmeAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateResumeDescription(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "resumeDescription", "resumeDescription",
+      generateResumeDescriptionAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+export async function getOrGenerateArchitectureExplanation(req, res, next) {
+  try {
+    const data = await lazyGetOrGenerate(
+      req.params.id, req.user.clerkId,
+      "architectureExplanation", "architectureExplanation",
+      generateArchitectureExplanationAI
+    );
+    res.json({ success: true, ...data });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ success: false, message: err.message });
+    next(err);
+  }
+}
+
+// ─── Progress Tracking ────────────────────────────────────────────────────────
+
+export async function updateProjectProgress(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid project id" });
+    }
+
+    const project = await Project.findOne({ _id: req.params.id, userId: req.user.clerkId });
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+
+    const { progressStatus, progressPercent } = req.body;
+    if (progressStatus && ["not_started", "in_progress", "completed"].includes(progressStatus)) {
+      project.progressStatus = progressStatus;
+    }
+    if (typeof progressPercent === "number" && progressPercent >= 0 && progressPercent <= 100) {
+      project.progressPercent = Math.round(progressPercent);
+    }
+    await project.save();
+
+    res.json({ success: true, progressStatus: project.progressStatus, progressPercent: project.progressPercent });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Reverse Engineer Product ─────────────────────────────────────────────────
+
+export async function reverseEngineerProject(req, res, next) {
+  try {
+    const { productName } = req.body;
+
+    if (!productName || typeof productName !== "string" || productName.trim().length < 2) {
+      return res.status(400).json({ success: false, message: "Product name is required (min 2 characters)" });
+    }
+
+    const trimmedName = productName.trim();
+
+    console.log("\n=== REVERSE ENGINEERING PRODUCT ===");
+    console.log("User:", req.user.clerkId);
+    console.log("Product:", trimmedName);
+
+    let generated;
+    let source;
+
+    try {
+      console.log("\nAttempting Gemini reverse engineering...");
+      generated = await reverseEngineerWithGemini({ productName: trimmedName });
+      source = "gemini";
+      console.log("✓ Successfully reverse engineered using Gemini");
+    } catch (err) {
+      console.error("\n✗ Gemini reverse engineering failed:", err.message);
+      console.error("\nFalling back to template...");
+      generated = analyzeProjectTemplate({ projectName: trimmedName });
+      // Clear resume/career fields for template fallback too
+      generated.resumePoints = [];
+      generated.resumeBullets = [];
+      generated.alternatives = [];
+      generated.roadmap = [];
+      source = "template";
+      console.log("✓ Successfully reverse engineered using template");
+    }
+
+    const projectData = {
+      userId: req.user.clerkId,
+      skills: generated.techStack || [],
+      domain: "General",
+      difficulty: "Advanced",
+      ...generated,
+      source,
+      sourceType: "reverse_engineered"
+    };
+
+    const project = await Project.create(projectData);
+
+    console.log("✓ Reverse engineered project saved:", project._id);
+    console.log("=== END REVERSE ENGINEERING ===\n");
+
+    res.status(201).json({ success: true, project });
+  } catch (err) {
+    console.error("\n✗ REVERSE ENGINEER ERROR:", err);
+    next(err);
+  }
+}
+
+// ─── AI Mentor Chat ──────────────────────────────────────────────────────────
+
+export async function chatWithProjectController(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid project id" });
+    }
+
+    const project = await Project.findOne({ _id: req.params.id, userId: req.user.clerkId });
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+
+    const { message } = req.body;
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const response = await chatWithProject(project.toObject(), message.trim());
+    res.json({ success: true, response });
+  } catch (err) {
+    console.error("\n✗ CHAT ERROR:", err);
     next(err);
   }
 }

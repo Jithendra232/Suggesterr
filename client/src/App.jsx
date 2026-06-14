@@ -10,6 +10,7 @@ import AnalyticsPage from "./pages/AnalyticsPage.jsx";
 import ComparePage from "./pages/ComparePage.jsx";
 import SharedProjectPage from "./pages/SharedProjectPage.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import NotFoundPage from "./pages/NotFoundPage.jsx";
 import AppLayout from "./layouts/AppLayout.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import React from 'react';
@@ -48,7 +49,7 @@ export default function App() {
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="compare" element={<ComparePage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
     </ThemeProvider>
