@@ -1,0 +1,4 @@
+Adding an existing project and finding hr questions on it
+Just telling the project name and giving the full architecture 
+Add description of the project 
+adding filter to the history (analyzed and generated)
