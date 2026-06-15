@@ -9,7 +9,11 @@ import { errorHandler, notFound } from "./middleware/error.middleware.js";
 
 const app = express();
 
-const allowedOrigins = [process.env.CLIENT_URL, "http://localhost:5173"].filter(Boolean);
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:5173",
+  "https://suggesterr.vercel.app"
+].filter(Boolean);
 
 app.use(helmet());
 app.use(
