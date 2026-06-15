@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL;
+const rawApiUrl = import.meta.env.VITE_API_URL || "";
+const API_URL = rawApiUrl.endsWith("/") ? rawApiUrl.slice(0, -1) : rawApiUrl;
 
 /**
  * Attempts to get a valid Clerk token, retrying with exponential backoff.
